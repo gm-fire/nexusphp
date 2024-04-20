@@ -470,26 +470,20 @@ function arr_set(&$array, $key, $value)
 
 function isHttps(): bool
 {
-    if (isRunningInConsole()) {
-        $securityLogin = get_setting("security.securelogin");
-        if ($securityLogin != "no") {
-            return true;
-        }
-        return false;
-    }
-    return nexus()->getRequestSchema() == 'https';
+    $schema = nexus()->getRequestSchema();
+    return $schema == 'https';
 }
 
 
-function getSchemeAndHttpHost(bool $fromConfig = false)
+function getSchemeAndHttpHost()
 {
-    if (isRunningInConsole() || $fromConfig) {
-        $host = get_setting("basic.BASEURL");
-    } else {
-        $host = nexus()->getRequestHost();
+    global $BASEURL;
+    if (isRunningInConsole()) {
+        return $BASEURL;
     }
     $isHttps = isHttps();
     $protocol = $isHttps ? 'https' : 'http';
+    $host = nexus()->getRequestHost();
     return "$protocol://" . $host;
 }
 

@@ -101,29 +101,14 @@ class ExamRepository extends BaseRepository
 
     private function checkBeginEnd(array $params): bool
     {
-        if (
-            !empty($params['begin']) && !empty($params['end'])
-            && empty($params['duration'])
-            && empty($params['recurring'])
-        ) {
+        if (!empty($params['begin']) && !empty($params['end']) && empty($params['duration'])) {
             return true;
         }
-        if (
-            empty($params['begin']) && empty($params['end'])
-            && isset($params['duration']) && ctype_digit((string)$params['duration']) && $params['duration'] > 0
-            && empty($params['recurring'])
-        ) {
-            return true;
-        }
-        if (
-            empty($params['begin']) && empty($params['end'])
-            && empty($params['duration'])
-            && !empty($params['recurring'])
-        ) {
+        if (empty($params['begin']) && empty($params['end']) && isset($params['duration']) && ctype_digit((string)$params['duration']) && $params['duration'] > 0) {
             return true;
         }
 
-        throw new \InvalidArgumentException(nexus_trans("exam.time_condition_invalid"));
+        throw new \InvalidArgumentException("Require begin and end or only duration.");
     }
 
     private function checkFilters(array $params)
@@ -246,7 +231,7 @@ class ExamRepository extends BaseRepository
         $now = Carbon::now();
         $query = Exam::query()
             ->where('status', Exam::STATUS_ENABLED)
-            ->whereRaw("if(begin is not null and end is not null, begin <= '$now' and end >= '$now', duration > 0 or recurring is not null)")
+            ->whereRaw("if(begin is not null and end is not null, begin <= '$now' and end >= '$now', duration > 0)")
         ;
 
         if (!is_null($excludeId)) {
@@ -345,7 +330,6 @@ class ExamRepository extends BaseRepository
     public function assignToUser(int $uid, int $examId, $begin = null, $end = null)
     {
         $logPrefix = "uid: $uid, examId: $examId, begin: $begin, end: $end";
-        /** @var Exam $exam */
         $exam = Exam::query()->find($examId);
         $user = User::query()->findOrFail($uid);
         if (Auth::user()->class <= $user->class) {
@@ -365,12 +349,27 @@ class ExamRepository extends BaseRepository
             'exam_id' => $exam->id,
         ];
         if (empty($begin)) {
-            $begin = $exam->getBeginForUser();
+            if (!empty($exam->begin)) {
+                $begin = $exam->begin;
+                $logPrefix .= ", begin from exam->begin: $begin";
+            } else {
+                $begin = now();
+                $logPrefix .= ", begin from now: $begin";
+            }
         } else {
             $begin = Carbon::parse($begin);
         }
         if (empty($end)) {
-            $end = $exam->getEndForUser();
+            if (!empty($exam->end)) {
+                $end = $exam->end;
+                $logPrefix .= ", end from exam->end: $end";
+            } elseif ($exam->duration > 0) {
+                $duration = $exam->duration;
+                $end = $begin->clone()->addDays($duration)->toDateTimeString();
+                $logPrefix .= ", end from begin + duration($duration): $end";
+            } else {
+                throw new \RuntimeException("No specific end or duration");
+            }
         } else {
             $end = Carbon::parse($end);
         }
@@ -1019,8 +1018,6 @@ class ExamRepository extends BaseRepository
         $size = 1000;
         $minId = 0;
         $result = 0;
-        $begin = $exam->getBeginForUser();
-        $end = $exam->getEndForUser();
         while (true) {
             $logPrefix = sprintf('[%s], exam: %s, size: %s', __FUNCTION__, $exam->id , $size);
             $users = (clone $baseQuery)->where("$userTable.id", ">", $minId)->limit($size)->get();
@@ -1036,8 +1033,6 @@ class ExamRepository extends BaseRepository
                 $insert = [
                     'uid' => $user->id,
                     'exam_id' => $exam->id,
-                    'begin' => $begin,
-                    'end' => $end,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
@@ -1085,12 +1080,10 @@ class ExamRepository extends BaseRepository
             $result += $examUsers->count();
             $now = Carbon::now()->toDateTimeString();
             $examUserIdArr = $uidToDisable = $messageToSend = $userBanLog = $userModcommentUpdate = [];
-            $examUserToInsert = [];
             foreach ($examUsers as $examUser) {
                 $minId = $examUser->id;
                 $examUserIdArr[] = $examUser->id;
                 $uid = $examUser->uid;
-                /** @var Exam $exam */
                 $exam = $examUser->exam;
                 $currentLogPrefix = sprintf("$logPrefix, user: %s, exam: %s, examUser: %s", $uid, $examUser->exam_id, $examUser->id);
                 if (!$examUser->user) {
@@ -1142,18 +1135,8 @@ class ExamRepository extends BaseRepository
                     'subject' => $subject,
                     'msg' => $msg
                 ];
-                if (!empty($exam->recurring) && $this->isExamMatchUser($exam, $examUser->user)) {
-                    $examUserToInsert[] = [
-                        'uid' => $examUser->user->id,
-                        'exam_id' => $exam->id,
-                        'begin' => $exam->getBeginForUser(),
-                        'end' => $exam->getEndForUser(),
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ];
-                }
             }
-            DB::transaction(function () use ($uidToDisable, $messageToSend, $examUserIdArr, $examUserToInsert, $userBanLog, $userModcommentUpdate, $userTable, $logPrefix) {
+            DB::transaction(function () use ($uidToDisable, $messageToSend, $examUserIdArr, $userBanLog, $userModcommentUpdate, $userTable, $logPrefix) {
                 ExamUser::query()->whereIn('id', $examUserIdArr)->update(['status' => ExamUser::STATUS_FINISHED]);
                 do {
                     $deleted = ExamProgress::query()->whereIn('exam_user_id', $examUserIdArr)->limit(10000)->delete();
@@ -1171,9 +1154,6 @@ class ExamRepository extends BaseRepository
                 }
                 if (!empty($userBanLog)) {
                     UserBanLog::query()->insert($userBanLog);
-                }
-                if (!empty($examUserToInsert)) {
-                    ExamUser::query()->insert($examUserToInsert);
                 }
             });
         }
