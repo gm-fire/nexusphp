@@ -48,6 +48,7 @@
         "laravel/tinker": "^2.5",
         "league/flysystem-ftp": "^3.0",
         "league/flysystem-sftp-v3": "^3.0",
+        "maicol07/flarum-api-client": "^1.5",
         "masbug/flysystem-google-drive-ext": "^2.0",
         "meilisearch/meilisearch-php": "^1.0",
         "orangehill/iseed": "^3.0",
