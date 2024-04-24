@@ -3,6 +3,8 @@ require "../include/bittorrent.php";
 dbconn();
 loggedinorreturn();
 
+use Maicol07\Flarum\Api\Client;
+
 $action = $_POST['action'] ?? '';
 $params = $_POST['params'] ?? [];
 
@@ -14,7 +16,6 @@ class AjaxInterface{
         $rep = new \App\Repositories\MedalRepository();
         return $rep->toggleUserMedalStatus($params['id'], $CURUSER['id']);
     }
-
 
     public static function attendanceRetroactive($params)
     {
@@ -110,7 +111,23 @@ class AjaxInterface{
     {
         global $CURUSER;
         $rep = new \App\Repositories\UserRepository();
-        return $rep->consumeBenefit($CURUSER['id'], $params);
+        $res = $rep->consumeBenefit($CURUSER['id'], $params);
+        // 通讯论坛api操作 by Fire
+        if ($params['meta_key'] == 'CHANGE_USERNAME') {
+            $bbs_url = nexus_env('BBS_URL', '');
+            $bbs_token = nexus_env('BBS_TOKEN', '');
+            $api = new Client($bbs_url, ['token' => $bbs_token]);
+            $bbs_user = $api->users($CURUSER['id'])->request();
+            if ($bbs_user) {
+                $api->users($bbs_user->id)->patch([
+                    'attributes' => [
+                        'nickname' => $params['username']
+                    ]
+                ])->request();
+            }
+        }
+        // 通讯论坛api操作 by Fire
+        return $res;
     }
 
     public static function clearShoutBox($params)
