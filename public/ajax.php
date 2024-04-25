@@ -117,14 +117,16 @@ class AjaxInterface{
         if ($params['meta_key'] == 'CHANGE_USERNAME' && $res) {
             $flarum_url = nexus_env('FLARUM_URL', '');
             $flarum_token = nexus_env('FLARUM_TOKEN', '');
-            $api = new Client($flarum_url, ['token' => $flarum_token]);
-            $flarum_user = $api->users($CURUSER['id'])->request();
-            if ($flarum_user) {
-                $api->users($flarum_user->id)->patch([
-                    'attributes' => [
-                        'nickname' => $params['username']
-                    ]
-                ])->request();
+            if ($flarum_url && $flarum_token) {
+                $api = new Client($flarum_url, ['token' => $flarum_token]);
+                $flarum_user = $api->users($CURUSER['id'])->request();
+                if ($flarum_user) {
+                    $api->users($flarum_user->id)->patch([
+                        'attributes' => [
+                            'nickname' => $params['username']
+                        ]
+                    ])->request();
+                }
             }
         }
         // 通讯论坛api操作 by Fire
