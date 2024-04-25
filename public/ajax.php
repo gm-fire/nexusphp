@@ -111,9 +111,10 @@ class AjaxInterface{
     {
         global $CURUSER;
         $rep = new \App\Repositories\UserRepository();
+        // 修改回调方式
         $res = $rep->consumeBenefit($CURUSER['id'], $params);
         // 通讯论坛api操作 by Fire
-        if ($params['meta_key'] == 'CHANGE_USERNAME') {
+        if ($params['meta_key'] == 'CHANGE_USERNAME' && $res) {
             $bbs_url = nexus_env('BBS_URL', '');
             $bbs_token = nexus_env('BBS_TOKEN', '');
             $api = new Client($bbs_url, ['token' => $bbs_token]);
