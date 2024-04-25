@@ -115,12 +115,12 @@ class AjaxInterface{
         $res = $rep->consumeBenefit($CURUSER['id'], $params);
         // 通讯论坛api操作 by Fire
         if ($params['meta_key'] == 'CHANGE_USERNAME' && $res) {
-            $bbs_url = nexus_env('BBS_URL', '');
-            $bbs_token = nexus_env('BBS_TOKEN', '');
-            $api = new Client($bbs_url, ['token' => $bbs_token]);
-            $bbs_user = $api->users($CURUSER['id'])->request();
-            if ($bbs_user) {
-                $api->users($bbs_user->id)->patch([
+            $flarum_url = nexus_env('FLARUM_URL', '');
+            $flarum_token = nexus_env('FLARUM_TOKEN', '');
+            $api = new Client($flarum_url, ['token' => $flarum_token]);
+            $flarum_user = $api->users($CURUSER['id'])->request();
+            if ($flarum_user) {
+                $api->users($flarum_user->id)->patch([
                     'attributes' => [
                         'nickname' => $params['username']
                     ]
