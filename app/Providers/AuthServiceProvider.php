@@ -75,6 +75,20 @@ class AuthServiceProvider extends ServiceProvider
             return User::query()->where('passkey', $passkey)->first();
         });
 
+        // flarum api 简单鉴权 by Fire
+        Auth::viaRequest('flarum', function (Request $request) {
+            $uid = $request->uid;
+            $secret = $request->secret;
+            if (strlen($secret) != 40) {
+                return null;
+            }
+            $flarum_secret = nexus_env('FLARUM_SECRET', '');
+            if ($flarum_secret !== $secret) {
+                return null;
+            }
+            return User::query()->where('id', $uid)->first();
+        });
+        // flarum api 简单鉴权 by Fire
     }
 
     private function getUserByCookie($cookie)

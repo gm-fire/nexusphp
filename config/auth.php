@@ -40,7 +40,11 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
-
+        // flarum api 简单鉴权 by Fire
+        'flarum' => [
+            'driver' => 'flarum',
+        ],
+        // flarum-api 简单鉴权 by Fire
         'api' => [
 //            'driver' => 'token',
             'driver' => 'passport',

@@ -97,3 +97,9 @@ Route::post('login', [\App\Http\Controllers\AuthenticateController::class, 'logi
 Route::group(['middleware' => ['auth.nexus:passkey', 'locale']], function () {
     Route::post("pieces-hash", [\App\Http\Controllers\TorrentController::class, "queryByPiecesHash"])->name("torrent.pieces_hash.query");
 });
+
+// flarum api by Fire
+Route::group(['middleware' => ['auth.nexus:flarum', 'locale']], function () {
+    Route::resource("flarum-messages", \App\Http\Controllers\FlarumMessageController::class);
+});
+// flarum api by Fire
