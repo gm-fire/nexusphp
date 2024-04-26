@@ -55,7 +55,11 @@
         "phpgangsta/googleauthenticator": "dev-master",
         "rhilip/bencode": "^2.0",
         "rlanvin/php-ip": "^3.0",
-        "spiral/roadrunner": "^2.8"
+        "spiral/roadrunner": "^2.8",
+        "xiaomlove/nexusphp-lucky-draw": "*",
+        "xiaomlove/nexusphp-menu": "*",
+        "xiaomlove/nexusphp-permission": "*",
+        "xiaomlove/nexusphp-sticky-promotion": "*"
     },
     "require-dev": {
         "spatie/laravel-ignition": "^1.0",
@@ -103,5 +107,9 @@
         }
     },
     "minimum-stability": "dev",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "repositories": [{
+            "type": "path",
+            "url": "packages/*"
+        }]
 }
