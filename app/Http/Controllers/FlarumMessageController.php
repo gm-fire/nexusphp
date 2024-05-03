@@ -8,12 +8,6 @@ use Illuminate\Support\Facades\Auth;
 
 class FlarumMessageController extends Controller
 {
-    public function index(Request $request)
-    {
-        $user = Auth::user();
-        var_dump($user);
-        die('12223');
-    }
 
     /**
      * Store a newly created resource in storage.
@@ -33,40 +27,6 @@ class FlarumMessageController extends Controller
 
         $resource = Message::add($message);
         return $this->success($resource);
-    }
-
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
-    {
-        //
     }
 
 }

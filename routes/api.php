@@ -18,7 +18,6 @@ Route::group(['middleware' => ['auth:sanctum', 'locale']], function () {
 
     Route::group(['middleware' => ['user']], function () {
         Route::post('logout', [\App\Http\Controllers\AuthenticateController::class, 'logout']);
-
         Route::get('user-me',[\App\Http\Controllers\UserController::class, 'me'])->name('user.me');
         Route::get('user-publish-torrent',[\App\Http\Controllers\UserController::class, 'publishTorrent']);
         Route::get('user-seeding-torrent',[\App\Http\Controllers\UserController::class, 'seedingTorrent']);
@@ -101,5 +100,6 @@ Route::group(['middleware' => ['auth.nexus:passkey', 'locale']], function () {
 // flarum api by Fire
 Route::group(['middleware' => ['auth.nexus:flarum', 'locale']], function () {
     Route::resource("flarum-messages", \App\Http\Controllers\FlarumMessageController::class);
+    Route::resource("flarum-seedbonus", \App\Http\Controllers\FlarumSeedBonusController::class);
 });
 // flarum api by Fire
