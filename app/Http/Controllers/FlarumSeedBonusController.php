@@ -31,7 +31,7 @@ class FlarumSeedBonusController extends Controller
             return $this->fail(null, "魔力不足");
         }
         $bonusRepo = new BonusRepository();
-        $response = $bonusRepo->bonusTransfer($user, $toUserinfo, $bonus);
+        $response = $bonusRepo->bonusTransfer($user, $toUserinfo, $bonus, false); // 免税
         return $this->success(json_decode($response));
     }
 
