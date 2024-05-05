@@ -151,17 +151,12 @@ if ($action){
                     $api = new Client($flarum_url, ['token' => $flarum_token]);
                     $flarum_user = $api->users($CURUSER['id'])->request();
                     if ($flarum_user) {
-                        try {
-                            $api->getClient()->post('/api/avatarupload', ['json' => [
-                                "data" => [
-                                    "id" => $flarum_user->id,
-                                    "avatar" => $avatar
-                                ]
-                            ]]);
-                        } catch (ClientException $e) {
-                            stderr($lang_usercp['std_error'], $lang_usercp['std_password_too_short'].goback("-2"), 0);
-                            die;
-                        }
+                        $api->getClient()->post('/api/avatarupload', ['json' => [
+                            "data" => [
+                                "id" => $flarum_user->id,
+                                "avatar" => $avatar
+                            ]
+                        ]]);
                     }
                 }
                 // 更新论坛头像 api 接口 Fire
