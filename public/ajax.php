@@ -3,7 +3,7 @@ require "../include/bittorrent.php";
 dbconn();
 loggedinorreturn();
 
-use Maicol07\Flarum\Api\Client;
+use Maicol07\Flarum\Api\Client; // 通讯论坛api操作 by Fire
 
 $action = $_POST['action'] ?? '';
 $params = $_POST['params'] ?? [];

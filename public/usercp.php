@@ -4,6 +4,8 @@ dbconn();
 require_once(get_langfile_path());
 loggedinorreturn();
 
+use Maicol07\Flarum\Api\Client; // 通讯论坛api操作 by Fire
+
 function bark($msg) {
 	stdhead();
 	global $lang_usercp;
@@ -139,8 +141,23 @@ if ($action){
                     }
                     $updateset[] = "notifs = " . sqlesc('[' . implode('][', array_keys($notifsArr)) . ']');
                 }
-				$query = "UPDATE users SET " . implode(",", $updateset) . " WHERE id = ".sqlesc($CURUSER["id"]);
-				$result = sql_query($query);
+                $query = "UPDATE users SET " . implode(",", $updateset) . " WHERE id = ".sqlesc($CURUSER["id"]);
+                $result = sql_query($query);
+                // 更新论坛头像 api 接口 Fire
+                $flarum_url = nexus_env('FLARUM_URL', '');
+                $flarum_token = nexus_env('FLARUM_TOKEN', '');
+                if ($flarum_url && $flarum_token) {
+                    $api = new Client($flarum_url, ['token' => $flarum_token]);
+                    $flarum_user = $api->users($CURUSER['id'])->request();
+                    if ($flarum_user) {
+                        $res = $api->getClient()->post('/users/'.$flarum_user->id.'/avatar', ['json' => [
+                            "avatar" => $avatar
+                        ]]);
+                        var_dump($res->getBody()->getContents());
+                        die('123');
+                    }
+                }
+                // 更新论坛头像 api 接口 Fire
 				if (!$result)
 				sqlerr(__FILE__,__LINE__);
 				else
