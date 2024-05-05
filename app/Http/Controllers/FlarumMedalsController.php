@@ -13,7 +13,7 @@ class FlarumMedalsController extends Controller
 
     public function index(Request $request)
     {
-        $userinfo = User::query()->where('id', $request->data['username'])->first();
+        $userinfo = User::query()->where('id', $request->uid)->first();
 
         if ($userinfo) {
             $resource = $userinfo->medals;
