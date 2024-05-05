@@ -78,7 +78,7 @@ class AuthServiceProvider extends ServiceProvider
         // flarum api 简单鉴权 by Fire
         Auth::viaRequest('flarum', function (Request $request) {
             $secret = $request->header('Authorization', '');
-            $uid = $request->uid;
+            $uid = (int)$request->uid;
             if (strlen($secret) != 40) {
                 return null;
             }
