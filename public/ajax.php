@@ -120,7 +120,7 @@ class AjaxInterface{
             if ($flarum_url && $flarum_token) {
                 try {
                     $api = new Client($flarum_url, ['token' => $flarum_token]);
-                    $flarum_user = $api->users()->filter(["q" => $CURUSER['id']])->request()->collect()[2];
+                    $flarum_user = array_values(collect($api->users()->filter(["q" => $CURUSER['id']])->request()->collect())->toArray())[0];
                     if ($flarum_user) {
                         $api->users($flarum_user->id)->patch([
                             'attributes' => [
