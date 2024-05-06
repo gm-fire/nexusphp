@@ -149,7 +149,7 @@ if ($action){
                 $flarum_token = nexus_env('FLARUM_TOKEN', '');
                 if ($flarum_url && $flarum_token) {
                     $api = new Client($flarum_url, ['token' => $flarum_token]);
-                    $flarum_user = $api->users($CURUSER['id'])->request();
+                    $flarum_user = $api->users()->filter(["q" => $CURUSER['id']])->request();
                     if ($flarum_user) {
                         $api->getClient()->post('/api/avatarupload', ['json' => [
                             "data" => [
