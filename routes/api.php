@@ -102,5 +102,6 @@ Route::group(['middleware' => ['auth.nexus:flarum', 'locale']], function () {
     Route::resource("flarum-messages", \App\Http\Controllers\FlarumMessageController::class);
     Route::resource("flarum-seedbonus", \App\Http\Controllers\FlarumSeedBonusController::class);
     Route::resource("flarum-medals", \App\Http\Controllers\FlarumMedalsController::class);
+    Route::resource("flarum-avatar", \App\Http\Controllers\FlarumAvatarController::class);
 });
 // flarum api by Fire
