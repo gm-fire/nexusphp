@@ -118,14 +118,18 @@ class AjaxInterface{
             $flarum_url = nexus_env('FLARUM_URL', '');
             $flarum_token = nexus_env('FLARUM_TOKEN', '');
             if ($flarum_url && $flarum_token) {
-                $api = new Client($flarum_url, ['token' => $flarum_token]);
-                $flarum_user = $api->users()->filter(["q" => $CURUSER['id']])->request();
-                if ($flarum_user) {
-                    $api->users($flarum_user->id)->patch([
-                        'attributes' => [
-                            'nickname' => $params['username']
-                        ]
-                    ])->request();
+                try {
+                    $api = new Client($flarum_url, ['token' => $flarum_token]);
+                    $flarum_user = $api->users()->filter(["q" => $CURUSER['id']])->request()->collect()[3];
+                    if ($flarum_user) {
+                        $api->users($flarum_user->id)->patch([
+                            'attributes' => [
+                                'nickname' => $params['username']
+                            ]
+                        ])->request();
+                    }
+                } catch (Exception $e) {
+                    die($e->getMessage());
                 }
             }
         }

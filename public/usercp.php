@@ -4,7 +4,6 @@ dbconn();
 require_once(get_langfile_path());
 loggedinorreturn();
 
-use GuzzleHttp\Exception\ClientException;
 use Maicol07\Flarum\Api\Client; // 通讯论坛api操作 by Fire
 
 function bark($msg) {
@@ -149,14 +148,18 @@ if ($action){
                 $flarum_token = nexus_env('FLARUM_TOKEN', '');
                 if ($flarum_url && $flarum_token) {
                     $api = new Client($flarum_url, ['token' => $flarum_token]);
-                    $flarum_user = $api->users()->filter(["q" => $CURUSER['id']])->request();
-                    if ($flarum_user) {
-                        $api->getClient()->post('/api/avatarupload', ['json' => [
-                            "data" => [
-                                "id" => $flarum_user->id,
-                                "avatar" => $avatar
-                            ]
-                        ]]);
+                    try {
+                        $flarum_user = $api->users()->filter(["q" => $CURUSER['id']])->request()->collect()[3];
+                        if ($flarum_user) {
+                            $api->getClient()->post('/api/avatarupload', ['json' => [
+                                "data" => [
+                                    "id" => $flarum_user->id,
+                                    "avatar" => $avatar
+                                ]
+                            ]]);
+                        }
+                    } catch (Exception $e) {
+                        die($e->getMessage());
                     }
                 }
                 // 更新论坛头像 api 接口 Fire
