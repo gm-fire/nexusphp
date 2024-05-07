@@ -3,6 +3,9 @@ require "../include/bittorrent.php";
 dbconn(true);
 require_once(get_langfile_path());
 loggedinorreturn(true);
+
+use Maicol07\Flarum\Api\Client; // 通讯论坛api操作 by Fire
+
 $userid = $CURUSER["id"];
 if ($_SERVER["REQUEST_METHOD"] == "POST")
 {
@@ -184,15 +187,27 @@ print implode('', $extraModules);
 
 if ($showlastxforumposts_main == "yes" && $CURUSER)
 {
-	$res = sql_query("SELECT posts.id AS pid, posts.userid AS userpost, posts.added, topics.id AS tid, topics.subject, topics.forumid, topics.views, forums.name FROM posts, topics, forums WHERE posts.topicid = topics.id AND topics.forumid = forums.id AND minclassread <=" . sqlesc(get_user_class()) . " ORDER BY posts.id DESC LIMIT 5") or sqlerr(__FILE__,__LINE__);
-	if(mysql_num_rows($res) != 0)
+    $flarum_url = nexus_env('FLARUM_URL', '');
+    $flarum_token = nexus_env('FLARUM_TOKEN', '');
+    if ($flarum_url && $flarum_token) {
+        try {
+            $api = new Client($flarum_url, ['token' => $flarum_token]);
+            $res = array_values(collect($api->discussions()->filter([
+                "q" => "-is:locked",
+                "sort" => "-commentCount"
+            ])->request()->collect())->toArray());
+        } catch (Exception $e) {
+            die($e->getMessage());
+        }
+    }
+//	$res = sql_query("SELECT posts.id AS pid, posts.userid AS userpost, posts.added, topics.id AS tid, topics.subject, topics.forumid, topics.views, forums.name FROM posts, topics, forums WHERE posts.topicid = topics.id AND topics.forumid = forums.id AND minclassread <=" . sqlesc(get_user_class()) . " ORDER BY posts.id DESC LIMIT 5") or sqlerr(__FILE__,__LINE__);
+	if($res)
 	{
 		print("<h2>".$lang_index['text_last_five_posts']."</h2>");
 		print("<table width=\"100%\" border=\"1\" cellspacing=\"0\" cellpadding=\"5\"><tr><td class=\"colhead\" width=\"100%\" align=\"left\">".$lang_index['col_topic_title']."</td><td class=\"colhead\" align=\"center\">".$lang_index['col_view']."</td><td class=\"colhead\" align=\"center\">".$lang_index['col_author']."</td><td class=\"colhead\" align=\"left\">".$lang_index['col_posted_at']."</td></tr>");
-
-		while ($postsx = mysql_fetch_assoc($res))
+        foreach($res as $postsx)
 		{
-			print("<tr><td><a href=\"forums.php?action=viewtopic&amp;topicid=".$postsx["tid"]."&amp;page=p".$postsx["pid"]."#pid".$postsx["pid"]."\"><b>".htmlspecialchars($postsx["subject"])."</b></a><br />".$lang_index['text_in']."<a href=\"forums.php?action=viewforum&amp;forumid=".$postsx["forumid"]."\">".htmlspecialchars($postsx["name"])."</a></td><td align=\"center\">".$postsx["views"]."</td><td align=\"center\">" . get_username($postsx["userpost"]) ."</td><td>".gettime($postsx["added"])."</td></tr>");
+			print("<tr><td><a href=\"{$flarum_url}/d/{$postsx->id}\" target='_blank'><b>".htmlspecialchars($postsx->attributes["title"])."</b></a><br />".$lang_index['text_in']."<a href=\"{$flarum_url}/t/{$postsx->tags[1]->attributes['slug']}\">".htmlspecialchars($postsx->tags[1]->attributes['name'])."</a></td><td align=\"center\">".$postsx->attributes["lastPostNumber"]."</td><td align=\"center\">" . get_username($postsx->user->username) ."</td><td>".gettime($postsx->attributes["createdAt"])."</td></tr>");
 		}
 		print("</table>");
 	}
