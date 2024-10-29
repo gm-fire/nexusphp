@@ -937,13 +937,13 @@ function getDataTraffic(array $torrent, array $queries, array $user, $peer, $sna
         }
         $uploaderRatio = get_setting('torrent.uploaderdouble');
         $log .= ", uploaderRatio: $uploaderRatio";
-        if ($torrent['owner'] == $user['id']) {
+        if ($torrent['owner'] == $user['id'] && $uploaderRatio != 1) {
             //uploader, use the bigger one
             $upRatio = max($uploaderRatio, \App\Models\Torrent::$promotionTypes[$spStateReal]['up_multiplier']);
-            $log .= ", [IS_UPLOADER], upRatio: $upRatio";
+            $log .= ", [IS_UPLOADER] && uploaderRatio != 1, upRatio: $upRatio";
         } else {
             $upRatio = \App\Models\Torrent::$promotionTypes[$spStateReal]['up_multiplier'];
-            $log .= ", [IS_NOT_UPLOADER], upRatio: $upRatio";
+            $log .= ", [IS_NOT_UPLOADER] || uploaderRatio == 1, upRatio: $upRatio";
         }
         /**
          * VIP do not calculate downloaded

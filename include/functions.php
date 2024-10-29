@@ -6315,7 +6315,7 @@ function build_bonus_table(array $user, array $bonusResult = [], array $options 
     $isDonor = is_donor($user);
     $donortimes_bonus = get_setting('bonus.donortimes');
     $baseBonusFactor = 1;
-    if ($isDonor) {
+    if ($isDonor && $donortimes_bonus != 0) {
         $baseBonusFactor = $donortimes_bonus;
     }
     $baseBonus = $bonusResult['seed_bonus'] * $baseBonusFactor;
