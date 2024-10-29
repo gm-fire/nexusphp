@@ -92,7 +92,7 @@ class CalculateUserSeedBonus implements ShouldQueue
             $bonusLog = "[CLEANUP_CLI_CALCULATE_SEED_BONUS_HANDLE_USER], user: $uid, seedBonusResult: " . nexus_json_encode($seedBonusResult);
             $all_bonus = $seedBonusResult['seed_bonus'];
             $bonusLog .= ", all_bonus: $all_bonus";
-            if ($isDonor) {
+            if ($isDonor && $donortimes_bonus != 0) {
                 $all_bonus = $all_bonus * $donortimes_bonus;
                 $bonusLog .= ", isDonor, donortimes_bonus: $donortimes_bonus, all_bonus: $all_bonus";
             }
