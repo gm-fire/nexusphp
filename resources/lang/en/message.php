@@ -19,6 +19,10 @@ return [
         'subject' => 'Download permission canceled',
         'body' => 'Your download permission has been cancelled due to excessive upload speed, please file if you are a seed box user.' ,
     ],
+    'download_disable_announce_paid_torrent_too_many_times' => [
+        'subject' => 'Download permission canceled',
+        'body' => 'Your download permission has been cancelled due to announce to paid torrent too many times, please make sure you have enough bonus.' ,
+    ],
     'download_enable' => [
         'subject' => 'Download permission restored',
         'body' => 'Your download privileges restored, you can now download torrents. By: :operator',

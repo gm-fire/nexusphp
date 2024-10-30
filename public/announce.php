@@ -164,6 +164,13 @@ if (!$az) {
     $redis->set("$passkeyInvalidKey:$passkey", TIMENOW, ['ex' => 24*3600]);
     warn("Invalid passkey! Re-download the .torrent from $BASEURL");
 }
+if ($az["enabled"] == "no")
+    warn("Your account is disabled!", 300);
+elseif ($az["parked"] == "yes")
+    warn("Your account is parked! (Read the FAQ)", 300);
+elseif ($az["downloadpos"] == "no")
+    warn("Your downloading privileges have been disabled! (Read the rules)", 300);
+
 $userid = intval($az['id'] ?? 0);
 unset($GLOBALS['CURUSER']);
 $CURUSER = $GLOBALS["CURUSER"] = $az;
@@ -401,13 +408,6 @@ if (!isset($self))
 	if ($valid[0] >= 1 && $seeder == 'no') err("You already are downloading the same torrent. You may only leech from one location at a time.", 300);
 	if ($valid[0] >= 3 && $seeder == 'yes') err("You cannot seed the same torrent from more than 3 locations.", 300);
 
-	if ($az["enabled"] == "no")
-        warn("Your account is disabled!", 300);
-	elseif ($az["parked"] == "yes")
-        warn("Your account is parked! (Read the FAQ)", 300);
-	elseif ($az["downloadpos"] == "no")
-        warn("Your downloading privileges have been disabled! (Read the rules)", 300);
-
 	if ($az["class"] < UC_VIP)
 	{
 		$ratio = (($az["downloaded"] > 0) ? ($az["uploaded"] / $az["downloaded"]) : 1);
@@ -451,43 +451,48 @@ if (!isset($self))
         && $torrent['owner'] != $userid
         && get_setting("torrent.paid_torrent_enabled") == "yes"
     ) {
-        $hasBuyCacheKey = \App\Repositories\TorrentRepository::BOUGHT_USER_CACHE_KEY_PREFIX . $torrentid;
-        $hasBuy = $redis->hGet($hasBuyCacheKey, $userid);
-        if ($hasBuy === false) {
-            //no cache
-            $lockName = "load_torrent_bought_user:$torrentid";
-            $loadBoughtLock = new \Nexus\Database\NexusLock($lockName, 300);
-            if ($loadBoughtLock->get()) {
-                //get lock, do load
-                executeCommand("torrent:load_bought_user $torrentid", "string", true, false);
-            } else {
-                do_log("can not get loadBoughtLock: $lockName", 'debug');
+        $torrentRep = new \App\Repositories\TorrentRepository();
+        $buyStatus = $torrentRep->getBuyStatus($userid, $torrentid);
+        if ($buyStatus > 0) {
+            do_log(sprintf("user: %v buy torrent： %v fail count: %v", $userid, $torrentid, $buyStatus), "error");
+            if ($buyStatus > 3) {
+                //warn
+                \App\Utils\MsgAlert::getInstance()->add(
+                    "announce_paid_torrent_too_many_times",
+                    time() + 86400,
+                    "announce to paid torrent and fail too many times, please make sure you have enough bonus!",
+                    "",
+                    "black"
+                );
             }
-            //simple cache the hasBuy result
-            $hasBuy = \Nexus\Database\NexusDB::remember(sprintf("user_has_buy_torrent:%s:%s", $userid, $torrentid), 86400*10, function () use($userid, $torrentid) {
-                $exists = \App\Models\TorrentBuyLog::query()->where('uid', $userid)->where('torrent_id', $torrentid)->exists();
-                return intval($exists);
-            });
+            if ($buyStatus > 10) {
+                //disable download
+                (new \App\Repositories\UserRepository())->updateDownloadPrivileges(null, $userid, 'no', 'announce_paid_torrent_too_many_times');
+            }
+            warn("purchase fail, please try again later, please make sure you have enough bonus", 300);
         }
-        if (!$hasBuy) {
-            $lock = new \Nexus\Database\NexusLock("buying_torrent:$userid", 5);
+        if ($buyStatus == \App\Repositories\TorrentRepository::BUY_STATUS_NOT_YET) {
+            //one by one
+            $lock = new \Nexus\Database\NexusLock("buying_torrent", 5);
             if (!$lock->get()) {
                 $msg = "buying torrent, wait!";
                 do_log("[ANNOUNCE] user: $userid, torrent: $torrentid, $msg", 'error');
-                err($msg);
+                warn($msg, 300);
             }
             $bonusRep = new \App\Repositories\BonusRepository();
             try {
                 $bonusRep->consumeToBuyTorrent($az['id'], $torrent['id'], 'Web');
-                $redis->hSet($hasBuyCacheKey, $userid, 1);
+                $torrentRep->addBuySuccessCache($userid, $torrentid);
                 $lock->release();
             } catch (\Exception $exception) {
                 $msg = $exception->getMessage();
                 do_log("[ANNOUNCE] user: $userid, torrent: $torrentid, $msg " . $exception->getTraceAsString(), 'error');
+                $torrentRep->addBuyFailCache($userid, $torrentid);
                 $lock->release();
                 err($msg);
             }
         }
+
     }
 }
 else // continue an existing session
@@ -570,19 +575,7 @@ else
     if ($event != 'stopped') {
         $isPeerExistResultSet = sql_query("select id from peers where $selfwhere limit 1");
         if (mysql_num_rows($isPeerExistResultSet) == 0) {
-            $cacheKey = 'peers:connectable:'.$ip.'-'.$port.'-'.$agent;
-            $connectable = \Nexus\Database\NexusDB::remember($cacheKey, 3600, function () use ($ip, $port) {
-                if (isIPV6($ip)) {
-                    $sockres = @fsockopen("tcp://[".$ip."]",$port,$errno,$errstr,1);
-                } else {
-                    $sockres = @fsockopen($ip, $port, $errno, $errstr, 1);
-                }
-                if (is_resource($sockres)) {
-                    fclose($sockres);
-                    return 'yes';
-                }
-                return 'no';
-            });
+            $connectable = "yes";
             $insertPeerSql = "INSERT INTO peers (torrent, userid, peer_id, ip, port, connectable, uploaded, downloaded, to_go, started, last_action, seeder, agent, downloadoffset, uploadoffset, passkey, ipv4, ipv6, is_seed_box) VALUES ($torrentid, $userid, ".sqlesc($peer_id).", ".sqlesc($ip).", $port, '$connectable', $uploaded, $downloaded, $left, $dt, $dt, '$seeder', ".sqlesc($agent).", $downloaded, $uploaded, ".sqlesc($passkey).", ".sqlesc($ipv4).", ".sqlesc($ipv6).", ".intval($isIPSeedBox).")";
             do_log("[INSERT PEER] peer not exists for $selfwhere, do insert with $insertPeerSql");
 
@@ -617,7 +610,7 @@ if (($left > 0 || $event == "completed") && $az['class'] < \App\Models\HitAndRun
     $hrLog = sprintf("[HR_LOG] user: %d, torrent: %d, hrMode: %s", $userid, $torrentid, $hrMode);
     if ($hrMode == \App\Models\HitAndRun::MODE_GLOBAL || ($hrMode == \App\Models\HitAndRun::MODE_MANUAL && $torrent['hr'] == \App\Models\Torrent::HR_YES)) {
         $hrCacheKey = sprintf("hit_and_run:%d:%d", $userid, $torrentid);
-        $hrExists = \Nexus\Database\NexusDB::remember($hrCacheKey, 24*3600, function () use ($torrentid, $userid) {
+        $hrExists = \Nexus\Database\NexusDB::remember($hrCacheKey, mt_rand(86400*365*5, 86400*365*10), function () use ($torrentid, $userid) {
             return \App\Models\HitAndRun::query()->where("uid", $userid)->where("torrent_id", $torrentid)->exists();
         });
         $hrLog .= ", hrExists: $hrExists";

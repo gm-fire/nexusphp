@@ -41,9 +41,16 @@ use Firebase\JWT\Key;
 
 class TorrentRepository extends BaseRepository
 {
-    const BOUGHT_USER_CACHE_KEY_PREFIX = "torrent_purchasers:";
+    const BOUGHT_USER_CACHE_KEY_PREFIX = "torrent_purchasers";
+
+    const BUY_FAIL_CACHE_KEY_PREFIX = "torrent_purchase_fails";
 
     const PIECES_HASH_CACHE_KEY = "torrent_pieces_hash";
+
+    const BUY_STATUS_SUCCESS = 0;
+    const BUY_STATUS_NOT_YET = -1;
+
+
 
     /**
      *  fetch torrent list
@@ -764,15 +771,102 @@ HTML;
         return $total;
     }
 
-    public function addBoughtUserToCache($torrentId, $uid)
+    /**
+     * 购买成功缓存，保存为 hash，一个种子一个 hash，永久有效
+     * @param $uid
+     * @param $torrentId
+     * @return void
+     * @throws \RedisException
+     */
+    public function addBuySuccessCache($uid, $torrentId): void
     {
         NexusDB::redis()->hSet($this->getBoughtUserCacheKey($torrentId), $uid, 1);
     }
 
-
-    private function getBoughtUserCacheKey($torrentId): string
+    public function hasBuySuccessCache($uid, $torrentId): bool
     {
-        return  self::BOUGHT_USER_CACHE_KEY_PREFIX . $torrentId;
+        return NexusDB::redis()->hGet($this->getBoughtUserCacheKey($torrentId), $uid) == 1;
+    }
+
+    /**
+     * 获取购买种子的缓存状态
+     *
+     * @param $uid
+     * @param $torrentId
+     * @return int
+     */
+    public function getBuyStatus($uid, $torrentId): int
+    {
+        //查询是否已经购买
+        if ($this->hasBuySuccessCache($uid, $torrentId)) {
+            return self::BUY_STATUS_SUCCESS;
+        }
+        //是否购买失败过
+        $buyFailCount = $this->getBuyFailCache($uid, $torrentId);
+        if ($buyFailCount > 0) {
+            //根据失败次数，禁用下载权限并做提示等
+            return $buyFailCount;
+        }
+        //购买失败缓存失效后，再重新查询数据库确定最终状态
+        $hasBuyFromDB = TorrentBuyLog::query()->where("uid", $uid)->where("torrent_id", $torrentId)->exists();
+        if ($hasBuyFromDB) {
+            //标记购买成功, 返回已购买
+            $this->addBuySuccessCache($uid, $torrentId);
+            return self::BUY_STATUS_SUCCESS;
+        } else {
+            //返回未购买，前端可执行购买逻辑
+            return self::BUY_STATUS_NOT_YET;
+        }
+    }
+
+    /**
+     * 添加购买失败缓存, 结果累加
+     * @param $uid
+     * @param $torrentId
+     * @return void
+     * @throws \RedisException
+     */
+    public function addBuyFailCache($uid, $torrentId): void
+    {
+        $key = $this->getBuyFailCacheKey($uid, $torrentId);
+        $result = NexusDB::redis()->incr($key);
+        if ($result == 1) {
+            NexusDB::redis()->expire($key, 3600);
+        }
+    }
+
+    /**
+     * 获取失败缓存 ，结果是失败的次数
+     *
+     * @param $uid
+     * @param $torrentId
+     * @return int
+     * @throws \RedisException
+     */
+    public function getBuyFailCache($uid, $torrentId): int
+    {
+        return intval(NexusDB::redis()->get($this->getBuyFailCacheKey($uid, $torrentId)));
+    }
+
+    /**
+     * 购买成功缓存 key
+     * @param $torrentId
+     * @return string
+     */
+    public function getBoughtUserCacheKey($torrentId): string
+    {
+        return  sprintf("%s:%s", self::BOUGHT_USER_CACHE_KEY_PREFIX, $torrentId);
+    }
+
+    /**
+     * 购买失败缓存 key
+     * @param int $userId
+     * @param int $torrentId
+     * @return string
+     */
+    public function getBuyFailCacheKey(int $userId, int $torrentId): string
+    {
+        return sprintf("%s:%s:%s", self::BUY_FAIL_CACHE_KEY_PREFIX, $userId, $torrentId);
     }
 
     public function addPiecesHashCache(int $torrentId, string $piecesHash): bool|int|\Redis

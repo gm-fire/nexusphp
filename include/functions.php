@@ -2798,6 +2798,8 @@ if ($msgalert)
 		$text = $lang_functions['text_you_have'].$unread.$lang_functions['text_new_message'] . add_s($unread) . $lang_functions['text_click_here_to_read'];
 		msgalert("messages.php",$text, "red");
 	}
+    \App\Utils\MsgAlert::getInstance()->render();
+
 /*
 	$pending_invitee = $Cache->get_value('user_'.$CURUSER["id"].'_pending_invitee_count');
 	if ($pending_invitee == ""){
@@ -5907,7 +5909,11 @@ function get_ip_location_from_geoip($ip): bool|array
 function msgalert($url, $text, $bgcolor = "red")
 {
     print("<table border=\"0\" cellspacing=\"0\" cellpadding=\"10\"><tr><td style='border: none; padding: 10px; background: ".$bgcolor."'>\n");
-    print("<b><a href=\"".$url."\" target='_blank'><font color=\"white\">".$text."</font></a></b>");
+    if (!empty($url)) {
+        print("<b><a href=\"".$url."\" target='_blank'><font color=\"white\">".$text."</font></a></b>");
+    } else {
+        print("<b><font color=\"white\">".$text."</font></b>");
+    }
     print("</td></tr></table><br />");
 }
 

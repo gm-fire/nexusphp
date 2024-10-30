@@ -19,6 +19,10 @@ return [
         'subject' => '下载权限取消',
         'body' => '你因上传速度过快下载权限被取消，若是盒子用户请备案。',
     ],
+    'download_disable_announce_paid_torrent_too_many_times' => [
+        'subject' => '下载权限取消',
+        'body' => '你因向付费种子汇报失败次数过多下载权限被取消，请确保你有足够的魔力。',
+    ],
     'download_enable' => [
         'subject' => '下载权限恢复',
         'body' => '你的下载权限恢复，你现在可以下载种子。By: :operator',
