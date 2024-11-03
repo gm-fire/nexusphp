@@ -71,6 +71,6 @@ img.hitandrun {
 .codemain>pre {
     margin: 0;
 }
-td.rowfollow {
+.word-break-all {
     word-break: break-all;
 }

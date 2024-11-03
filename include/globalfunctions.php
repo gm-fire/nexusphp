@@ -1275,3 +1275,8 @@ function publish_model_event(string $event, int $id): void
         do_log("event: $event, id: $id, channel: $channel, channel is empty!", "error");
     }
 }
+
+function convertNamespaceToSnake(string $str): string
+{
+    return str_replace(["\\", "::"], ["_", "."], $str);
+}

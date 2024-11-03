@@ -49,6 +49,7 @@ class TorrentRepository extends BaseRepository
 
     const BUY_STATUS_SUCCESS = 0;
     const BUY_STATUS_NOT_YET = -1;
+    const BUY_STATUS_UNKNOWN = -2;
 
 
 
@@ -807,16 +808,8 @@ HTML;
             //根据失败次数，禁用下载权限并做提示等
             return $buyFailCount;
         }
-        //购买失败缓存失效后，再重新查询数据库确定最终状态
-        $hasBuyFromDB = TorrentBuyLog::query()->where("uid", $uid)->where("torrent_id", $torrentId)->exists();
-        if ($hasBuyFromDB) {
-            //标记购买成功, 返回已购买
-            $this->addBuySuccessCache($uid, $torrentId);
-            return self::BUY_STATUS_SUCCESS;
-        } else {
-            //返回未购买，前端可执行购买逻辑
-            return self::BUY_STATUS_NOT_YET;
-        }
+        //不是成功或失败，直接返回未知
+        return self::BUY_STATUS_UNKNOWN;
     }
 
     /**

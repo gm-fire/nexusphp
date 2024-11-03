@@ -471,28 +471,11 @@ if (!isset($self))
             }
             warn("purchase fail, please try again later, please make sure you have enough bonus", 300);
         }
-        if ($buyStatus == \App\Repositories\TorrentRepository::BUY_STATUS_NOT_YET) {
-            //one by one
-            $lock = new \Nexus\Database\NexusLock("buying_torrent", 5);
-            if (!$lock->get()) {
-                $msg = "buying torrent, wait!";
-                do_log("[ANNOUNCE] user: $userid, torrent: $torrentid, $msg", 'error');
-                warn($msg, 300);
-            }
-            $bonusRep = new \App\Repositories\BonusRepository();
-            try {
-                $bonusRep->consumeToBuyTorrent($az['id'], $torrent['id'], 'Web');
-                $torrentRep->addBuySuccessCache($userid, $torrentid);
-                $lock->release();
-            } catch (\Exception $exception) {
-                $msg = $exception->getMessage();
-                do_log("[ANNOUNCE] user: $userid, torrent: $torrentid, $msg " . $exception->getTraceAsString(), 'error');
-                $torrentRep->addBuyFailCache($userid, $torrentid);
-                $lock->release();
-                err($msg);
-            }
+        if ($buyStatus == \App\Repositories\TorrentRepository::BUY_STATUS_UNKNOWN) {
+            //just enqueue job
+            \App\Utils\ThirdPartyJob::addBuyTorrent($userid, $torrentid);
+            warn("purchase in progress, please wait", 300);
         }
-
     }
 }
 else // continue an existing session
@@ -611,7 +594,7 @@ if (($left > 0 || $event == "completed") && $az['class'] < \App\Models\HitAndRun
     if ($hrMode == \App\Models\HitAndRun::MODE_GLOBAL || ($hrMode == \App\Models\HitAndRun::MODE_MANUAL && $torrent['hr'] == \App\Models\Torrent::HR_YES)) {
         $hrCacheKey = sprintf("hit_and_run:%d:%d", $userid, $torrentid);
         $hrExists = \Nexus\Database\NexusDB::remember($hrCacheKey, mt_rand(86400*365*5, 86400*365*10), function () use ($torrentid, $userid) {
-            return \App\Models\HitAndRun::query()->where("uid", $userid)->where("torrent_id", $torrentid)->exists();
+            return \App\Models\HitAndRun::query()->where("uid", $userid)->where("torrent_id", $torrentid)->exists() ? 1 : 0;
         });
         $hrLog .= ", hrExists: $hrExists";
         if (!$hrExists) {
