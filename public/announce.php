@@ -523,7 +523,7 @@ if (isset($self) && $event == "stopped")
 	sql_query("DELETE FROM peers WHERE id = {$self['id']}") or err("D Err");
 	if (mysql_affected_rows() && !empty($snatchInfo))
 	{
-//		$updateset[] = ($self["seeder"] == "yes" ? "seeders = seeders - 1" : "leechers = leechers - 1");
+		$updateset[] = ($self["seeder"] == "yes" ? "seeders = seeders - 1" : "leechers = leechers - 1");
         $hasChangeSeederLeecher = true;
 		sql_query("UPDATE snatched SET uploaded = uploaded + $trueupthis, downloaded = downloaded + $truedownthis, to_go = $left, $announcetime, last_action = ".$dt." WHERE id = {$snatchInfo['id']}") or err("SL Err 1");
 	}
@@ -544,7 +544,7 @@ elseif(isset($self))
 	if (mysql_affected_rows())
 	{
 		if ($seeder <> $self["seeder"]) {
-//            $updateset[] = ($seeder == "yes" ? "seeders = seeders + 1, leechers = leechers - 1" : "seeders = seeders - 1, leechers = leechers + 1");
+            $updateset[] = ($seeder == "yes" ? "seeders = seeders + 1, leechers = leechers - 1" : "seeders = seeders - 1, leechers = leechers + 1");
             $hasChangeSeederLeecher = true;
         }
 		if (!empty($snatchInfo)) {
@@ -566,7 +566,7 @@ else
                 sql_query($insertPeerSql) or err("PL Err 2");
                 if (mysql_affected_rows())
                 {
-//                    $updateset[] = ($seeder == "yes" ? "seeders = seeders + 1" : "leechers = leechers + 1");
+                    $updateset[] = ($seeder == "yes" ? "seeders = seeders + 1" : "leechers = leechers + 1");
                     $hasChangeSeederLeecher = true;
 //                    $check = @mysql_fetch_row(@sql_query("SELECT COUNT(*) FROM snatched WHERE torrentid = $torrentid AND userid = $userid"));
                     $checkSnatchedRes = mysql_fetch_assoc(sql_query("SELECT id FROM snatched WHERE torrentid = $torrentid AND userid = $userid limit 1"));
@@ -626,11 +626,11 @@ if (($left > 0 || $event == "completed") && $az['class'] < \App\Models\HitAndRun
         do_log("$hrLog, not match", "debug");
     }
 }
-
-if (isset($event) && !empty($event)) {
-    $updateset[] = 'seeders = ' . get_row_count("peers", "where torrent = $torrentid and to_go = 0");
-    $updateset[] = 'leechers = ' . get_row_count("peers", "where torrent = $torrentid and to_go > 0");
-}
+// revert to only increment/decrement
+//if (isset($event) && !empty($event)) {
+//    $updateset[] = 'seeders = ' . get_row_count("peers", "where torrent = $torrentid and to_go = 0");
+//    $updateset[] = 'leechers = ' . get_row_count("peers", "where torrent = $torrentid and to_go > 0");
+//}
 
 if (count($updateset) || $hasChangeSeederLeecher) // Update only when there is change in peer counts
 {
