@@ -44,7 +44,7 @@ final class ThirdPartyJob {
 
     public static function addBuyTorrent(int $userId, int $torrentId): void
     {
-        $key = sprintf("%s:%s_%s_%s", self::$queueKey, convertNamespaceToSnake(__METHOD__), $userId, $torrentId);
+        $key = sprintf("%s:%s_%s", self::$queueKey, $userId, $torrentId);
         if (NexusDB::redis()->set($key, now()->toDateTimeString(), ['nx', 'ex' => 3600])) {
             $value = [
                 'name' => self::JOB_BUY_TORRENT,

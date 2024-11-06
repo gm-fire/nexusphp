@@ -84,6 +84,8 @@ class CalculateUserSeedBonus implements ShouldQueue
         $logFile = getLogFile("seed-bonus-points");
         do_log("$logPrefix, [GET_UID_REAL], count: " . count($results) . ", logFile: $logFile");
         $fd = fopen($logFile, 'a');
+        $seedPointsUpdates = $seedPointsPerHourUpdates = $seedBonusUpdates = [];
+        $logStr = "";
         foreach ($results as $userInfo)
         {
             $uid = $userInfo['id'];
@@ -115,10 +117,13 @@ class CalculateUserSeedBonus implements ShouldQueue
             $dividend = 3600 / $autoclean_interval_one;
             $all_bonus = $all_bonus / $dividend;
             $seed_points = $seedBonusResult['seed_points'] / $dividend;
-            $updatedAt = now()->toDateTimeString();
-            $sql = "update users set seed_points = ifnull(seed_points, 0) + $seed_points, seed_points_per_hour = {$seedBonusResult['seed_points']}, seedbonus = seedbonus + $all_bonus, seed_points_updated_at = '$updatedAt' where id = $uid limit 1";
-            do_log("$bonusLog, query: $sql");
-            NexusDB::statement($sql);
+//            $updatedAt = now()->toDateTimeString();
+//            $sql = "update users set seed_points = ifnull(seed_points, 0) + $seed_points, seed_points_per_hour = {$seedBonusResult['seed_points']}, seedbonus = seedbonus + $all_bonus, seed_points_updated_at = '$updatedAt' where id = $uid limit 1";
+//            do_log("$bonusLog, query: $sql");
+//            NexusDB::statement($sql);
+            $seedPointsUpdates[] = sprintf("case %d then ifnull(seed_points, 0) + %d", $uid, $seed_points);
+            $seedPointsPerHourUpdates[] = sprintf("case %d then %d", $uid, $seedBonusResult['seed_points']);
+            $seedBonusUpdates[] = sprintf("case %d then %d", $uid, $all_bonus);
             if ($fd) {
                 $log = sprintf(
                     '%s|%s|%s|%s|%s|%s|%s|%s',
@@ -126,16 +131,27 @@ class CalculateUserSeedBonus implements ShouldQueue
                     $userInfo['seed_points'], number_format($seed_points, 1, '.', ''),  number_format($userInfo['seed_points'] + $seed_points, 1, '.', ''),
                     $userInfo['seedbonus'], number_format($all_bonus, 1, '.', ''),  number_format($userInfo['seedbonus'] + $all_bonus, 1, '.', '')
                 );
-                fwrite($fd, $log . PHP_EOL);
+//                fwrite($fd, $log . PHP_EOL);
+                $logStr .= $log . PHP_EOL;
             } else {
                 do_log("logFile: $logFile is not writeable!", 'error');
             }
         }
+        $nowStr = now()->toDateTimeString();
+        $sql = sprintf(
+            "update users set seed_points = case id %s end, seed_points_per_hour = case id %s end, seedbonus = case id %s end, seed_points_updated_at = '%s' where id in (%s)",
+            implode(" ", $seedPointsUpdates), implode(" ", $seedPointsPerHourUpdates), implode(" ", $seedBonusUpdates), $nowStr, $idStr
+        );
+        $result = sql_query($sql);
         if ($delIdRedisKey) {
             NexusDB::cache_del($this->idRedisKey);
         }
+        fwrite($fd, $logStr);
         $costTime = time() - $beginTimestamp;
-        do_log("$logPrefix, [DONE], cost time: $costTime seconds");
+        do_log(sprintf(
+            "$logPrefix, [DONE], update user count: %s, result: %s, cost time: %s seconds",
+            count($seedPointsUpdates), var_export($result, true), $costTime
+        ));
     }
 
     /**
