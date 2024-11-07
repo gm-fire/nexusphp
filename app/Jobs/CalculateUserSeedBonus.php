@@ -149,9 +149,10 @@ class CalculateUserSeedBonus implements ShouldQueue
         fwrite($fd, $logStr);
         $costTime = time() - $beginTimestamp;
         do_log(sprintf(
-            "$logPrefix, [DONE], update user count: %s, result: %s, cost time: %s seconds, sql: %s",
-            count($seedPointsUpdates), var_export($result, true), $costTime, $sql
+            "$logPrefix, [DONE], update user count: %s, result: %s, cost time: %s seconds",
+            count($seedPointsUpdates), var_export($result, true), $costTime
         ));
+        do_log("$logPrefix, sql: $sql", "debug");
     }
 
     /**
