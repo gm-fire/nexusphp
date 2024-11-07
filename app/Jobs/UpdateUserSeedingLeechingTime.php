@@ -95,8 +95,8 @@ class UpdateUserSeedingLeechingTime implements ShouldQueue
         }
         $costTime = time() - $beginTimestamp;
         do_log(sprintf(
-            "$logPrefix, [DONE], update user count: %s, result: %s, cost time: %s seconds",
-            $count, var_export($result, true), $costTime
+            "$logPrefix, [DONE], update user count: %s, result: %s, cost time: %s seconds, sql: %s",
+            $count, var_export($result, true), $costTime, $sql
         ));
     }
 

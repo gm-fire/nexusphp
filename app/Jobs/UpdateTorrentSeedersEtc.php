@@ -107,8 +107,8 @@ class UpdateTorrentSeedersEtc implements ShouldQueue
         }
         $costTime = time() - $beginTimestamp;
         do_log(sprintf(
-            "$logPrefix, [DONE], update torrent count: %s, result: %s, cost time: %s seconds",
-            count($torrentIdArr), var_export($result, true), $costTime
+            "$logPrefix, [DONE], update torrent count: %s, result: %s, cost time: %s seconds, sql: %s",
+            count($torrentIdArr), var_export($result, true), $costTime, $sql
         ));
     }
 
