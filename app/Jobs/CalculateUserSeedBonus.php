@@ -142,7 +142,7 @@ class CalculateUserSeedBonus implements ShouldQueue
             "update users set seed_points = case id %s end, seed_points_per_hour = case id %s end, seedbonus = case id %s end, seed_points_updated_at = '%s' where id in (%s)",
             implode(" ", $seedPointsUpdates), implode(" ", $seedPointsPerHourUpdates), implode(" ", $seedBonusUpdates), $nowStr, $idStr
         );
-        $result = sql_query($sql);
+        $result = NexusDB::statement($sql);
         if ($delIdRedisKey) {
             NexusDB::cache_del($this->idRedisKey);
         }
