@@ -121,9 +121,9 @@ class CalculateUserSeedBonus implements ShouldQueue
 //            $sql = "update users set seed_points = ifnull(seed_points, 0) + $seed_points, seed_points_per_hour = {$seedBonusResult['seed_points']}, seedbonus = seedbonus + $all_bonus, seed_points_updated_at = '$updatedAt' where id = $uid limit 1";
 //            do_log("$bonusLog, query: $sql");
 //            NexusDB::statement($sql);
-            $seedPointsUpdates[] = sprintf("case %d then ifnull(seed_points, 0) + %d", $uid, $seed_points);
-            $seedPointsPerHourUpdates[] = sprintf("case %d then %d", $uid, $seedBonusResult['seed_points']);
-            $seedBonusUpdates[] = sprintf("case %d then %d", $uid, $all_bonus);
+            $seedPointsUpdates[] = sprintf("when %d then ifnull(seed_points, 0) + %d", $uid, $seed_points);
+            $seedPointsPerHourUpdates[] = sprintf("when %d then %d", $uid, $seedBonusResult['seed_points']);
+            $seedBonusUpdates[] = sprintf("when %d then %d", $uid, $all_bonus);
             if ($fd) {
                 $log = sprintf(
                     '%s|%s|%s|%s|%s|%s|%s|%s',

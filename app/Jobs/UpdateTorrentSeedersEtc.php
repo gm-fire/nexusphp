@@ -99,7 +99,7 @@ class UpdateTorrentSeedersEtc implements ShouldQueue
             ->groupBy(['torrent'])
             ->get();
        foreach ($res as $row) {
-            $torrents[$row->torrent]["comments"] = $row["c"];
+            $torrents[$row->torrent]["comments"] = $row->c;
         }
         $seedersUpdates = $leechersUpdates = $commentsUpdates = [];
         foreach ($torrentIdArr as $id) {

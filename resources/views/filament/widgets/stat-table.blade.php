@@ -20,7 +20,7 @@
                                     colspan="3"
                                 @endif
                                 >
-                                    <div class="px-4 py-3 filament-tables-text-column"><span class="{{$item['class'] ?? ''}}">{{$item['value']}}</span></div>
+                                    <div class="px-4 py-3 filament-tables-text-column {{$item['class'] ?? ''}}"><span class="">{{$item['value']}}</span></div>
                                 </td>
                                 @endforeach
                             </tr>
