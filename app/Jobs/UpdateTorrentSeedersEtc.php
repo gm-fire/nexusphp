@@ -78,18 +78,28 @@ class UpdateTorrentSeedersEtc implements ShouldQueue
         $torrentIdArr = explode(",", $idStr);
         //批量取，简单化
         $torrents = array();
-        $res = sql_query("SELECT torrent, seeder, COUNT(*) AS c FROM peers GROUP BY torrent, seeder where torrent in ($idStr)");
-        while ($row = mysql_fetch_assoc($res)) {
-            if ($row["seeder"] == "yes")
+//        $res = sql_query("SELECT torrent, seeder, COUNT(*) AS c FROM peers GROUP BY torrent, seeder where torrent in ($idStr)");
+        $res = NexusDB::table("peers")
+            ->selectRaw("torrent, seeder, COUNT(*) AS c")
+            ->whereRaw("torrent in ($idStr)")
+            ->groupBy(['torrent', 'seeder'])
+            ->get();
+        foreach ($res as $row) {
+            if ($row->seeder == "yes")
             $key = "seeders";
             else
             $key = "leechers";
-            $torrents[$row["torrent"]][$key] = $row["c"];
+            $torrents[$row->torrent][$key] = $row->c;
         }
 
-        $res = sql_query("SELECT torrent, COUNT(*) AS c FROM comments GROUP BY torrent where torrent in ($idStr)");
-        while ($row = mysql_fetch_assoc($res)) {
-            $torrents[$row["torrent"]]["comments"] = $row["c"];
+//        $res = sql_query("SELECT torrent, COUNT(*) AS c FROM comments GROUP BY torrent where torrent in ($idStr)");
+        $res = NexusDB::table("comments")
+            ->selectRaw("torrent, COUNT(*) AS c")
+            ->whereRaw("torrent in ($idStr)")
+            ->groupBy(['torrent'])
+            ->get();
+       foreach ($res as $row) {
+            $torrents[$row->torrent]["comments"] = $row["c"];
         }
         $seedersUpdates = $leechersUpdates = $commentsUpdates = [];
         foreach ($torrentIdArr as $id) {
@@ -101,14 +111,14 @@ class UpdateTorrentSeedersEtc implements ShouldQueue
             "update torrents set seeders = case id %s end, leechers = case id %s end, comments = case id %s end where id in (%s)",
             implode(" ", $seedersUpdates), implode(" ", $leechersUpdates), implode(" ", $commentsUpdates), $idStr
         );
-        $result = sql_query($sql);
+        $result = NexusDB::statement($sql);
         if ($delIdRedisKey) {
             NexusDB::cache_del($this->idRedisKey);
         }
         $costTime = time() - $beginTimestamp;
         do_log(sprintf(
-            "$logPrefix, [DONE], update torrent count: %s, result: %s, cost time: %s seconds",
-            count($torrentIdArr), var_export($result, true), $costTime
+            "$logPrefix, [DONE], update torrent count: %s, result: %s, cost time: %s seconds, sql: %s",
+            count($torrentIdArr), var_export($result, true), $costTime, $sql
         ));
     }
 

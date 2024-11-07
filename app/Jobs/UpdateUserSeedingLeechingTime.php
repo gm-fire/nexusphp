@@ -76,20 +76,25 @@ class UpdateUserSeedingLeechingTime implements ShouldQueue
             return;
         }
         //批量取，简单化
-        $res = sql_query("select userid, sum(seedtime) as seedtime_sum, sum(leechtime) as leechtime_sum from snatched group by userid where userid in ($idStr)");
+//        $res = sql_query("select userid, sum(seedtime) as seedtime_sum, sum(leechtime) as leechtime_sum from snatched group by userid where userid in ($idStr)");
+        $res = NexusDB::table("snatched")
+            ->selectRaw("userid, sum(seedtime) as seedtime_sum, sum(leechtime) as leechtime_sum")
+            ->whereRaw("userid in ($idStr)")
+            ->groupBy("userid")
+            ->get();
         $seedtimeUpdates = $leechTimeUpdates = [];
         $nowStr = now()->toDateTimeString();
         $count = 0;
-        while ($row = mysql_fetch_assoc($res)) {
+        foreach ($res as $row) {
             $count++;
-            $seedtimeUpdates = sprintf("when %d then %d", $row['userid'], $row['seedtime_sum'] ?? 0);
-            $leechTimeUpdates = sprintf("when %d then %d", $row['userid'], $row['leechtime_sum'] ?? 0);
+            $seedtimeUpdates = sprintf("when %d then %d", $row->userid, $row->seedtime_sum ?? 0);
+            $leechTimeUpdates = sprintf("when %d then %d", $row->userid, $row->leechtime_sum ?? 0);
         }
         $sql = sprintf(
             "update users set seedtime = case id %s end, leechtime = case id %s end, seed_time_updated_at = '%s' where id in (%s)",
             implode(" ", $seedtimeUpdates), implode(" ", $leechTimeUpdates), $nowStr, $idStr
         );
-        $result = sql_query($sql);
+        $result = NexusDB::statement($sql);
         if ($delIdRedisKey) {
             NexusDB::cache_del($this->idRedisKey);
         }
