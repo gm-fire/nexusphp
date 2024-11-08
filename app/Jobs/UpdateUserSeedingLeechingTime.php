@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Nexus\Database\NexusDB;
 
@@ -56,6 +57,16 @@ class UpdateUserSeedingLeechingTime implements ShouldQueue
     public $timeout = 3600;
 
     /**
+     * 获取任务时，应该通过的中间件。
+     *
+     * @return array
+     */
+    public function middleware()
+    {
+        return [new WithoutOverlapping($this->idRedisKey)];
+    }
+
+    /**
      * Execute the job.
      *
      * @return void
@@ -63,7 +74,10 @@ class UpdateUserSeedingLeechingTime implements ShouldQueue
     public function handle()
     {
         $beginTimestamp = time();
-        $logPrefix = sprintf("[CLEANUP_CLI_UPDATE_SEEDING_LEECHING_TIME_HANDLE_JOB], commonRequestId: %s, beginUid: %s, endUid: %s", $this->requestId, $this->beginUid, $this->endUid);
+        $logPrefix = sprintf(
+            "[CLEANUP_CLI_UPDATE_SEEDING_LEECHING_TIME_HANDLE_JOB], commonRequestId: %s, beginUid: %s, endUid: %s, idStr: %s, idRedisKey: %s",
+            $this->requestId, $this->beginUid, $this->endUid, $this->idStr, $this->idRedisKey,
+        );
 
         $idStr = $this->idStr;
         $delIdRedisKey = false;

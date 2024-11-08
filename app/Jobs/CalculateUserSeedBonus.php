@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Nexus\Database\NexusDB;
 use Nexus\Nexus;
@@ -56,6 +57,16 @@ class CalculateUserSeedBonus implements ShouldQueue
     public $timeout = 3600;
 
     /**
+     * 获取任务时，应该通过的中间件。
+     *
+     * @return array
+     */
+    public function middleware()
+    {
+        return [new WithoutOverlapping($this->idRedisKey)];
+    }
+
+    /**
      * Execute the job.
      *
      * @return void
@@ -63,7 +74,10 @@ class CalculateUserSeedBonus implements ShouldQueue
     public function handle()
     {
         $beginTimestamp = time();
-        $logPrefix = sprintf("[CLEANUP_CLI_CALCULATE_SEED_BONUS_HANDLE_JOB], commonRequestId: %s, beginUid: %s, endUid: %s", $this->requestId, $this->beginUid, $this->endUid);
+        $logPrefix = sprintf(
+            "[CLEANUP_CLI_CALCULATE_SEED_BONUS_HANDLE_JOB], commonRequestId: %s, beginUid: %s, endUid: %s, idStr: %s, idRedisKey: %s",
+            $this->requestId, $this->beginUid, $this->endUid, $this->idStr, $this->idRedisKey
+        );
         $haremAdditionFactor = Setting::get('bonus.harem_addition');
         $officialAdditionFactor = Setting::get('bonus.official_addition');
         $donortimes_bonus = Setting::get('bonus.donortimes');
@@ -114,6 +128,7 @@ class CalculateUserSeedBonus implements ShouldQueue
                 $all_bonus += $medalAddition;
                 $bonusLog .= ", medalAdditionFactor: {$seedBonusResult['medal_additional_factor']}, medalBonus: {$seedBonusResult['medal_bonus']}, medalAddition: $medalAddition, all_bonus: $all_bonus";
             }
+            do_log($bonusLog);
             $dividend = 3600 / $autoclean_interval_one;
             $all_bonus = $all_bonus / $dividend;
             $seed_points = $seedBonusResult['seed_points'] / $dividend;
@@ -121,9 +136,9 @@ class CalculateUserSeedBonus implements ShouldQueue
 //            $sql = "update users set seed_points = ifnull(seed_points, 0) + $seed_points, seed_points_per_hour = {$seedBonusResult['seed_points']}, seedbonus = seedbonus + $all_bonus, seed_points_updated_at = '$updatedAt' where id = $uid limit 1";
 //            do_log("$bonusLog, query: $sql");
 //            NexusDB::statement($sql);
-            $seedPointsUpdates[] = sprintf("when %d then ifnull(seed_points, 0) + %d", $uid, $seed_points);
-            $seedPointsPerHourUpdates[] = sprintf("when %d then %d", $uid, $seedBonusResult['seed_points']);
-            $seedBonusUpdates[] = sprintf("when %d then %d", $uid, $all_bonus);
+            $seedPointsUpdates[] = sprintf("when %d then ifnull(seed_points, 0) + %f", $uid, $seed_points);
+            $seedPointsPerHourUpdates[] = sprintf("when %d then %f", $uid, $seedBonusResult['seed_points']);
+            $seedBonusUpdates[] = sprintf("when %d then seedbonus + %f", $uid, $all_bonus);
             if ($fd) {
                 $log = sprintf(
                     '%s|%s|%s|%s|%s|%s|%s|%s',
