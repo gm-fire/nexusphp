@@ -3,8 +3,6 @@ require "../include/bittorrent.php";
 dbconn();
 loggedinorreturn();
 
-use Maicol07\Flarum\Api\Client; // 通讯论坛api操作 by Fire
-
 $action = $_POST['action'] ?? '';
 $params = $_POST['params'] ?? [];
 
@@ -16,6 +14,7 @@ class AjaxInterface{
         $rep = new \App\Repositories\MedalRepository();
         return $rep->toggleUserMedalStatus($params['id'], $CURUSER['id']);
     }
+
 
     public static function attendanceRetroactive($params)
     {
@@ -111,30 +110,7 @@ class AjaxInterface{
     {
         global $CURUSER;
         $rep = new \App\Repositories\UserRepository();
-        // 修改回调方式
-        $res = $rep->consumeBenefit($CURUSER['id'], $params);
-        // 通讯论坛api操作 by Fire
-        if ($params['meta_key'] == 'CHANGE_USERNAME' && $res) {
-            $flarum_url = nexus_env('FLARUM_URL', '');
-            $flarum_token = nexus_env('FLARUM_TOKEN', '');
-            if ($flarum_url && $flarum_token) {
-                try {
-                    $api = new Client($flarum_url, ['token' => $flarum_token]);
-                    $flarum_user = array_values(collect($api->users()->filter(["q" => $CURUSER['id']])->request()->collect())->toArray())[0];
-                    if ($flarum_user) {
-                        $api->users($flarum_user->id)->patch([
-                            'attributes' => [
-                                'nickname' => $params['username']
-                            ]
-                        ])->request();
-                    }
-                } catch (Exception $e) {
-                    die($e->getMessage());
-                }
-            }
-        }
-        // 通讯论坛api操作 by Fire
-        return $res;
+        return $rep->consumeBenefit($CURUSER['id'], $params);
     }
 
     public static function clearShoutBox($params)
@@ -173,6 +149,13 @@ class AjaxInterface{
     //    dd($params, $data);
         $rep = new \App\Repositories\MedalRepository();
         return $rep->saveUserMedal($CURUSER['id'], $data);
+    }
+
+    public static function claimTask($params)
+    {
+        global $CURUSER;
+        $rep = new \App\Repositories\ExamRepository();
+        return $rep->assignToUser($CURUSER['id'], $params['exam_id']);
     }
 }
 

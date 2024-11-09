@@ -470,20 +470,26 @@ function arr_set(&$array, $key, $value)
 
 function isHttps(): bool
 {
-    $schema = nexus()->getRequestSchema();
-    return $schema == 'https';
+    if (isRunningInConsole()) {
+        $securityLogin = get_setting("security.securelogin");
+        if ($securityLogin != "no") {
+            return true;
+        }
+        return false;
+    }
+    return nexus()->getRequestSchema() == 'https';
 }
 
 
-function getSchemeAndHttpHost()
+function getSchemeAndHttpHost(bool $fromConfig = false)
 {
-    global $BASEURL;
-    if (isRunningInConsole()) {
-        return $BASEURL;
+    if (isRunningInConsole() || $fromConfig) {
+        $host = get_setting("basic.BASEURL");
+    } else {
+        $host = nexus()->getRequestHost();
     }
     $isHttps = isHttps();
     $protocol = $isHttps ? 'https' : 'http';
-    $host = nexus()->getRequestHost();
     return "$protocol://" . $host;
 }
 
@@ -1019,6 +1025,7 @@ function clear_setting_cache()
     do_log("clear_setting_cache");
     \Nexus\Database\NexusDB::cache_del('nexus_settings_in_laravel');
     \Nexus\Database\NexusDB::cache_del('nexus_settings_in_nexus');
+    \Nexus\Database\NexusDB::cache_del('setting_protected_forum');
     $channel = nexus_env("CHANNEL_NAME_SETTING");
     if (!empty($channel)) {
         \Nexus\Database\NexusDB::redis()->publish($channel, "update");
@@ -1231,7 +1238,15 @@ function get_snatch_info($torrentId, $userId)
     return mysql_fetch_assoc(sql_query(sprintf('select * from snatched where torrentid = %s and userid = %s order by id desc limit 1', $torrentId, $userId)));
 }
 
-function fire_event(string $name, int $id): void
+function fire_event(string $name, \Illuminate\Database\Eloquent\Model $model, \Illuminate\Database\Eloquent\Model $oldModel = null): void
 {
-    executeCommand("event:fire --name=$name --id=$id", "string", true, false);
+    $prefix = "fire_event:";
+    $idKey = $prefix . \Illuminate\Support\Str::random();
+    $idKeyOld = "";
+    \Nexus\Database\NexusDB::cache_put($idKey, serialize($model), 3600*24*30);
+    if ($oldModel) {
+        $idKeyOld = $prefix . \Illuminate\Support\Str::random();
+        \Nexus\Database\NexusDB::cache_put($idKeyOld, serialize($oldModel), 3600*24*30);
+    }
+    executeCommand("event:fire --name=$name --idKey=$idKey --idKeyOld=$idKeyOld", "string", true, false);
 }

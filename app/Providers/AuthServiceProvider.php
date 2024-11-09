@@ -56,7 +56,9 @@ class AuthServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->registerPolicies();
-        Passport::useClientModel(OauthClient::class);
+        if (class_exists(Passport::class)) {
+            Passport::useClientModel(OauthClient::class);
+        }
 
         Auth::viaRequest('nexus-cookie', function (Request $request) {
             return $this->getUserByCookie($request->cookie());
@@ -75,20 +77,6 @@ class AuthServiceProvider extends ServiceProvider
             return User::query()->where('passkey', $passkey)->first();
         });
 
-        // flarum api 简单鉴权 by Fire
-        Auth::viaRequest('flarum', function (Request $request) {
-            $secret = $request->header('Authorization', '');
-            $uid = (int)$request->uid;
-            if (strlen($secret) != 40) {
-                return null;
-            }
-            $flarum_secret = nexus_env('FLARUM_SECRET', '');
-            if ($flarum_secret !== $secret) {
-                return null;
-            }
-            return User::query()->where('id', $uid)->first();
-        });
-        // flarum api 简单鉴权 by Fire
     }
 
     private function getUserByCookie($cookie)

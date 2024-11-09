@@ -818,7 +818,7 @@ function closeall() {
 			tagRemove = popstack(bbtags)
 			if ( (tagRemove != 'color') ) {
 				doInsert("[/"+tagRemove+"]", "", false);
-				eval("document.<?php echo $form?>." + tagRemove + ".value = ' " + tagRemove + " '");
+				eval("document.<?php echo $form?>." + tagRemove + ".value = ' " + tagRemove.toUpperCase() + " '");
 				eval(tagRemove + "_open = 0");
 			} else {
 				doInsert("[/"+tagRemove+"]", "", false);
@@ -2670,6 +2670,7 @@ else {
                 <font class = 'color_bonus'><?php echo $lang_functions['text_bonus'] ?></font>[<a href="mybonus.php"><?php echo $lang_functions['text_use'] ?></a>]: <?php echo number_format($CURUSER['seedbonus'], 1)?>
                 <?php if($attendance){ printf(' <a href="attendance.php" class="">'.$lang_functions['text_attended'].'</a>', $attendance->points, $CURUSER['attendance_card']); }else{ printf(' <a href="attendance.php" class="faqlink">%s</a>', $lang_functions['text_attendance']);}?>
                 <a href="medal.php">[<?php echo nexus_trans('medal.label')?>]</a>
+                <a href="task.php">[<?php echo nexus_trans('exam.type_task')?>]</a>
                 <font class = 'color_invite'><?php echo $lang_functions['text_invite'] ?></font>[<a href="invite.php?id=<?php echo $CURUSER['id']?>"><?php echo $lang_functions['text_send'] ?></a>]: <?php echo sprintf('%s(%s)', $CURUSER['invites'], \App\Models\Invite::query()->where('inviter', $CURUSER['id'])->where('invitee', '')->where('expired_at', '>', now())->count())?>
                 <?php if(get_user_class() >= \App\Models\User::getAccessAdminClassMin()) printf('[<a href="%s" target="_blank">%s</a>]', nexus_env('FILAMENT_PATH', 'nexusphp'), $lang_functions['text_management_system'])?>
                 <br />
@@ -2898,9 +2899,9 @@ if ($msgalert)
 
 	//show the exam info
     $exam = new \Nexus\Exam\Exam();
-    $examHtml = $exam->render($CURUSER['id']);
-    if (!empty($examHtml)) {
-        msgalert("messages.php", $examHtml, "blue");
+    $currentExam = $exam->getCurrent($CURUSER['id']);
+    if (!empty($currentExam['html'])) {
+        msgalert("messages.php", $currentExam['html'], $currentExam['exam']->background_color ?? 'blue');
     }
 }
 		if ($offlinemsg)
@@ -3114,9 +3115,9 @@ function loggedinorreturn($mainpage = false) {
 
 function deletetorrent($id, $notify = false) {
     $idArr = is_array($id) ? $id : [$id];
-    $torrentInfo = \Nexus\Database\NexusDB::table("torrents")
+    $torrentInfo = \App\Models\Torrent::query()
         ->whereIn("id", $idArr)
-        ->get(['id', 'pieces_hash'])
+        ->get()
         ->KeyBy("id")
     ;
     $torrentRep = new \App\Repositories\TorrentRepository();
@@ -3133,7 +3134,6 @@ function deletetorrent($id, $notify = false) {
         if ($torrentInfo->has($_id)) {
             $torrentRep->delPiecesHashCache($torrentInfo->get($_id)->pieces_hash);
         }
-        do_action("torrent_delete", $_id);
         do_log("delete torrent: $_id", "error");
         unlink(getFullDirectory("$torrent_dir/$_id.torrent"));
         \App\Models\TorrentOperationLog::add([
@@ -3145,6 +3145,10 @@ function deletetorrent($id, $notify = false) {
     }
     $meiliSearchRep = new \App\Repositories\MeiliSearchRepository();
     $meiliSearchRep->deleteDocuments($idArr);
+    if (is_int($id)) {
+        do_action("torrent_delete", $id);
+        fire_event("torrent_deleted", $torrentInfo->get($id));
+    }
 }
 
 function pager($rpp, $count, $href, $opts = array(), $pagename = "page") {
@@ -5774,7 +5778,7 @@ function get_share_ratio($uploaded, $downloaded)
         $ratio = floor(($uploaded / $downloaded) * 1000) / 1000;
     } elseif ($uploaded) {
         //@todo 读语言文件
-        $ratio = '无限';
+        $ratio = 'Infinity';
     } else {
         $ratio = '---';
     }

@@ -3,11 +3,16 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Google\Service\Dataproc\RegexValidation;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 
 class Exam extends NexusModel
 {
-    protected $fillable = ['name', 'description', 'begin', 'end', 'duration', 'status', 'is_discovered', 'filters', 'indexes', 'priority'];
+    protected $fillable = [
+        'name', 'description', 'begin', 'end', 'duration', 'status', 'is_discovered', 'filters', 'indexes', 'priority',
+        'recurring', 'type', 'success_reward_bonus', 'fail_deduct_bonus', 'max_user_count', 'background_color',
+    ];
 
     public $timestamps = true;
 
@@ -60,6 +65,13 @@ class Exam extends NexusModel
         self::FILTER_USER_REGISTER_DAYS_RANGE => ['name' => 'User register days range'],
     ];
 
+    const RECURRING_DAILY = "Daily";
+    const RECURRING_WEEKLY = "Weekly";
+    const RECURRING_MONTHLY = "Monthly";
+
+    const TYPE_EXAM = 1;
+    const TYPE_TASK = 2;
+
     protected static function booted()
     {
         static::saving(function (Model $model) {
@@ -80,6 +92,35 @@ class Exam extends NexusModel
             return $keyValues;
         }
         return $result;
+    }
+
+    public static function listRecurringOptions(): array
+    {
+        return [
+            self::RECURRING_DAILY => nexus_trans("exam.recurring_daily"),
+            self::RECURRING_WEEKLY => nexus_trans("exam.recurring_weekly"),
+            self::RECURRING_MONTHLY => nexus_trans("exam.recurring_monthly"),
+        ];
+    }
+
+    public static function listTypeOptions(): array
+    {
+        return [
+            self::TYPE_EXAM => nexus_trans("exam.type_exam"),
+            self::TYPE_TASK => nexus_trans("exam.type_task"),
+        ];
+    }
+
+    public function getTypeTextAttribute()
+    {
+        return self::listTypeOptions()[$this->type] ?? "";
+    }
+
+
+    protected function getRecurringTextAttribute(): string
+    {
+        $options = self::listRecurringOptions();
+        return $options[$this->recurring] ?? '';
     }
 
     public function getStatusTextAttribute(): string
@@ -124,7 +165,10 @@ class Exam extends NexusModel
         $filter = self::FILTER_USER_CLASS;
         if (!empty($currentFilters[$filter])) {
             $classes = collect(User::$classes)->only($currentFilters[$filter]);
-            $arr[] = sprintf('%s: %s', nexus_trans("exam.filters.$filter"), $classes->pluck('text')->implode(', '));
+            $arr[] = sprintf(
+                '%s: %s',
+                nexus_trans("exam.filters.$filter"), $classes->map(fn ($value, $key) => User::getClassText($key))->implode(', ')
+            );
         }
 
         $filter = self::FILTER_USER_REGISTER_TIME_RANGE;
@@ -160,6 +204,104 @@ class Exam extends NexusModel
         }
 
         return implode("<br/>", $arr);
+    }
+
+    public function getBeginForUser(): Carbon
+    {
+        if (!empty($this->begin)) {
+            return Carbon::parse($this->begin);
+        }
+        if (!empty($this->recurring)) {
+            return $this->getRecurringBegin(Carbon::now());
+        }
+        return Carbon::now();
+    }
+
+    public function getEndForUser(): Carbon
+    {
+        if (!empty($this->end)) {
+            return Carbon::parse($this->end);
+        }
+        if (!empty($this->duration)) {
+            return $this->getBeginForUser()->clone()->addDays($this->duration);
+        }
+        if (!empty($this->recurring)) {
+            return $this->getRecurringEnd(Carbon::now());
+        }
+        throw new \RuntimeException(nexus_trans("exam.time_condition_invalid"));
+    }
+
+    public function getRecurringBegin(Carbon $time): Carbon
+    {
+        $recurring = $this->recurring;
+        if ($recurring == self::RECURRING_WEEKLY) {
+            return $time->startOfWeek();
+        } elseif ($recurring == self::RECURRING_MONTHLY) {
+            return $time->startOfMonth();
+        } elseif ($recurring == self::RECURRING_DAILY) {
+            return $time->startOfDay();
+        }
+        throw new \RuntimeException("Invalid recurring: $recurring");
+    }
+
+    public function getRecurringEnd(Carbon $time): Carbon
+    {
+        $recurring = $this->recurring;
+        if ($recurring == self::RECURRING_WEEKLY) {
+            return $time->endOfWeek();
+        } elseif ($recurring == self::RECURRING_MONTHLY) {
+            return $time->endOfMonth();
+        } elseif ($recurring == self::RECURRING_DAILY) {
+            return $time->endOfDay();
+        }
+        throw new \RuntimeException("Invalid recurring: $recurring");
+    }
+
+    public function getMessageSubjectTransKey(string $result): string
+    {
+        return match ($this->type) {
+            self::TYPE_EXAM => "exam.checkout_{$result}_message_subject_for_exam",
+            self::TYPE_TASK => "exam.checkout_{$result}_message_subject_for_task",
+            default => throw new \RuntimeException("Invalid type: " . $this->type)
+        };
+    }
+
+    public function getMessageContentTransKey(string $result): string
+    {
+        return match ($this->type) {
+            self::TYPE_EXAM => "exam.checkout_{$result}_message_content_for_exam",
+            self::TYPE_TASK => "exam.checkout_{$result}_message_content_for_task",
+            default => throw new \RuntimeException("Invalid type: " . $this->type)
+        };
+    }
+
+    public function getPassResultTransKey(string $result): string
+    {
+        return match ($this->type) {
+            self::TYPE_EXAM => "exam.result_{$result}_for_exam",
+            self::TYPE_TASK => "exam.result_{$result}_for_task",
+            default => throw new \RuntimeException("Invalid type: " . $this->type)
+        };
+    }
+
+    public function isTypeExam(): bool
+    {
+        return $this->type == self::TYPE_EXAM;
+    }
+
+    public function isTypeTask(): bool
+    {
+        return $this->type == self::TYPE_TASK;
+    }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, "exam_users", "exam_id", "uid");
+    }
+
+    public function onGoingUsers()
+    {
+        return $this->users()->wherePivot("status", ExamUser::STATUS_NORMAL);
     }
 
 }

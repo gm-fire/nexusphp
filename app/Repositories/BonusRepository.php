@@ -51,6 +51,7 @@ class BonusRepository extends BaseRepository
 
     }
 
+
     public function consumeToBuyMedal($uid, $medalId): bool
     {
         $user = User::query()->findOrFail($uid);
@@ -168,6 +169,7 @@ class BonusRepository extends BaseRepository
         return true;
 
     }
+
 
     public function consumeToBuyTemporaryInvite($uid, $count = 1): bool
     {
@@ -368,132 +370,5 @@ class BonusRepository extends BaseRepository
         });
     }
 
-    /**
-     * 魔力值转账
-     * @param $user
-     * @param $toUser
-     * @param $bonus
-     * @return void
-     */
-    public function bonusTransfer($user, $toUser, $bonus, $isTaxValue = true, $comment = null): string
-    {
 
-        $tax = NexusDB::table("settings")->where("name", "bonus.taxpercentage")->first();
-        $basicTax = NexusDB::table("settings")->where("name", "bonus.basictax")->first();
-        $taxValue = floatval(bcadd($bonus * $tax->value * 0.01 + $basicTax->value, 0, 2));
-        $reception = $isTaxValue ? $bonus - $taxValue : $bonus;
-        NexusDB::transaction(function () use ($user, $toUser, $bonus, $tax, $reception, $comment) {
-            $affectedRows = NexusDB::table($user->getTable())
-                ->where('id', $user->id)
-                ->update(['seedbonus' => $user['seedbonus'] - $bonus]);
-            if ($affectedRows != 1) {
-                do_log("update user seedbonus affected rows != 1, query: " . last_query(), 'error');
-                throw new \RuntimeException("Update user seedbonus fail.");
-            }
-            $nowStr = now()->toDateTimeString();
-            $bonusLog = [
-                'business_type' => "transfer",
-                'uid' => $user->id,
-                'old_total_value' => $user['seedbonus'],
-                'value' => $bonus,
-                'new_total_value' => $user['seedbonus'] - $bonus,
-                'comment' => $comment == null ? sprintf('[%s] %s', "transfer", $user->id . "转账给" . $toUser->id . "[" . $bonus . "]魔力值，税[" . $bonus - $reception . "]，实际收到[" . $reception . "]") : $comment,
-                'created_at' => $nowStr,
-                'updated_at' => $nowStr,
-            ];
-            BonusLogs::query()->insert($bonusLog);
-            do_log("bonusLog: " . nexus_json_encode($bonusLog));
-            clear_user_cache($user->id, $user->passkey);
-            $affectedRows = NexusDB::table($user->getTable())
-                ->where('id', $toUser->id)
-                ->update(['seedbonus' => $toUser['seedbonus'] + $reception]);
-            if ($affectedRows != 1) {
-                do_log("update user seedbonus affected rows != 1, query: " . last_query(), 'error');
-                throw new \RuntimeException("Update user seedbonus fail.");
-            }
-            $nowStr = now()->toDateTimeString();
-            $bonusLog = [
-                'business_type' => "transfer",
-                'uid' => $toUser->id,
-                'old_total_value' => $toUser['seedbonus'],
-                'value' => $reception,
-                'new_total_value' => $toUser['seedbonus'] + $reception,
-                'comment' => $comment == null ? sprintf('[%s] %s', "transfer", $user->id . "转账给" . $toUser->id . "[" . $bonus . "]魔力值，税[" . $bonus - $reception . "]，实际收到[" . $reception . "]") : $comment,
-                'created_at' => $nowStr,
-                'updated_at' => $nowStr,
-            ];
-            BonusLogs::query()->insert($bonusLog);
-            do_log("bonusLog: " . nexus_json_encode($bonusLog));
-            clear_user_cache($toUser->id, $toUser->passkey);
-        });
-        $response = [
-            'remainingBonus' => $user['seedbonus'] - $bonus,
-            'tax' => $isTaxValue ? $taxValue : 0,
-            'taxExpense' => $isTaxValue ? $taxValue : 0,
-            'reception' => $reception
-        ];
-        return json_encode($response);
-    }
-
-    /**
-     * 增加魔力
-     * @param $user
-     * @param $bonus
-     * @param $type
-     * @param $comment
-     * @return void
-     */
-    public function add($user, $bonus, $type, $comment)
-    {
-        NexusDB::transaction(function () use ($user, $bonus, $type, $comment) {
-            NexusDB::table($user->getTable())
-                ->where('id', $user->id)
-                ->update(['seedbonus' => $user['seedbonus'] + $bonus]);
-            $nowStr = now()->toDateTimeString();
-            $bonusLog = [
-                'business_type' => "transfer",
-                'uid' => $user->id,
-                'old_total_value' => $user['seedbonus'],
-                'value' => $bonus,
-                'new_total_value' => $user['seedbonus'] + $bonus,
-                'comment' => sprintf('[%s] %s', $type, $comment),
-                'created_at' => $nowStr,
-                'updated_at' => $nowStr,
-            ];
-            BonusLogs::query()->insert($bonusLog);
-            do_log("bonusLog: " . nexus_json_encode($bonusLog));
-            clear_user_cache($user->id, $user->passkey);
-        });
-    }
-
-    /**
-     * 减少魔力
-     * @param $user
-     * @param $bonus
-     * @param $type
-     * @param $comment
-     * @return void
-     */
-    public function reduce($user, $bonus, $type, $comment)
-    {
-        NexusDB::transaction(function () use ($user, $bonus, $type, $comment) {
-            NexusDB::table($user->getTable())
-                ->where('id', $user->id)
-                ->update(['seedbonus' => $user['seedbonus'] - $bonus]);
-            $nowStr = now()->toDateTimeString();
-            $bonusLog = [
-                'business_type' => "transfer",
-                'uid' => $user->id,
-                'old_total_value' => $user['seedbonus'],
-                'value' => $bonus,
-                'new_total_value' => $user['seedbonus'] - $bonus,
-                'comment' => sprintf('[%s] %s', $type, $comment),
-                'created_at' => $nowStr,
-                'updated_at' => $nowStr,
-            ];
-            BonusLogs::query()->insert($bonusLog);
-            do_log("bonusLog: " . nexus_json_encode($bonusLog));
-            clear_user_cache($user->id, $user->passkey);
-        });
-    }
 }

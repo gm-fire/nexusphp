@@ -18,6 +18,7 @@ Route::group(['middleware' => ['auth:sanctum', 'locale']], function () {
 
     Route::group(['middleware' => ['user']], function () {
         Route::post('logout', [\App\Http\Controllers\AuthenticateController::class, 'logout']);
+
         Route::get('user-me',[\App\Http\Controllers\UserController::class, 'me'])->name('user.me');
         Route::get('user-publish-torrent',[\App\Http\Controllers\UserController::class, 'publishTorrent']);
         Route::get('user-seeding-torrent',[\App\Http\Controllers\UserController::class, 'seedingTorrent']);
@@ -42,6 +43,9 @@ Route::group(['middleware' => ['auth:sanctum', 'locale']], function () {
         Route::post('polls-vote', [\App\Http\Controllers\PollController::class, 'vote']);
         Route::resource('rewards', \App\Http\Controllers\RewardController::class);
         Route::get('notifications', [\App\Http\Controllers\ToolController::class, 'notifications']);
+        Route::resource('over-forums', \App\Http\Controllers\OverForumController::class);
+        Route::resource('forums', \App\Http\Controllers\ForumController::class);
+        Route::resource('topics', \App\Http\Controllers\TopicController::class);
     });
 
     Route::group(['middleware' => ['admin']], function () {
@@ -96,12 +100,3 @@ Route::post('login', [\App\Http\Controllers\AuthenticateController::class, 'logi
 Route::group(['middleware' => ['auth.nexus:passkey', 'locale']], function () {
     Route::post("pieces-hash", [\App\Http\Controllers\TorrentController::class, "queryByPiecesHash"])->name("torrent.pieces_hash.query");
 });
-
-// flarum api by Fire
-Route::group(['middleware' => ['auth.nexus:flarum', 'locale']], function () {
-    Route::resource("flarum-messages", \App\Http\Controllers\FlarumMessageController::class);
-    Route::resource("flarum-seedbonus", \App\Http\Controllers\FlarumSeedBonusController::class);
-    Route::resource("flarum-medals", \App\Http\Controllers\FlarumMedalsController::class);
-    Route::resource("flarum-avatar", \App\Http\Controllers\FlarumAvatarController::class);
-});
-// flarum api by Fire

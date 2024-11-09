@@ -332,7 +332,6 @@ class Update extends Install
                 ["value" => User::query()->where("class", User::CLASS_STAFF_LEADER)->first(["id"])->id]
             );
         }
-
     }
 
     public function runExtraMigrate()
