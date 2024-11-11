@@ -6,6 +6,7 @@ use App\Http\Middleware\Locale;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -37,8 +38,11 @@ class AppServiceProvider extends ServiceProvider
     {
         global $plugin;
         $plugin->start();
-//        JsonResource::withoutWrapping();
         DB::connection(config('database.default'))->enableQueryLog();
+        $forceScheme = strtolower(env('FORCE_SCHEME'));
+        if (env('APP_ENV') == "production" && in_array($forceScheme, ['https', 'http'])) {
+            URL::forceScheme($forceScheme);
+        }
 
         Filament::serving(function () {
             Filament::registerNavigationGroups([
