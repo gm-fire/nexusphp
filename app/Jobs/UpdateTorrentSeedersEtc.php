@@ -78,6 +78,7 @@ class UpdateTorrentSeedersEtc implements ShouldQueue
             "[CLEANUP_CLI_UPDATE_TORRENT_SEEDERS_ETC_HANDLE_JOB], commonRequestId: %s, beginTorrentId: %s, endTorrentId: %s, idStr: %s, idRedisKey: %s",
             $this->requestId, $this->beginTorrentId, $this->endTorrentId, $this->idStr, $this->idRedisKey
         );
+        do_log("$logPrefix, job start ...");
 
         $idStr = $this->idStr;
         $delIdRedisKey = false;

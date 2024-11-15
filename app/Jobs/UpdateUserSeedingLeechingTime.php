@@ -78,6 +78,7 @@ class UpdateUserSeedingLeechingTime implements ShouldQueue
             "[CLEANUP_CLI_UPDATE_SEEDING_LEECHING_TIME_HANDLE_JOB], commonRequestId: %s, beginUid: %s, endUid: %s, idStr: %s, idRedisKey: %s",
             $this->requestId, $this->beginUid, $this->endUid, $this->idStr, $this->idRedisKey,
         );
+        do_log("$logPrefix, job start ...");
 
         $idStr = $this->idStr;
         $delIdRedisKey = false;
