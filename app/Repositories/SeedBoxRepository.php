@@ -34,6 +34,7 @@ class SeedBoxRepository extends BaseRepository
         $params = $this->formatParams($params);
         $seedBoxRecord = SeedBoxRecord::query()->create($params);
         $this->clearCache();
+        publish_model_event("seed_box_record_created", $seedBoxRecord->id);
         return $seedBoxRecord;
     }
 
@@ -85,6 +86,7 @@ class SeedBoxRepository extends BaseRepository
         $params = $this->formatParams($params);
         $model->update($params);
         $this->clearCache();
+        publish_model_event("seed_box_record_updated", $id);
         return $model;
     }
 
